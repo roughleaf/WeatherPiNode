@@ -155,6 +155,7 @@ void NRF24PTXmode(void)
 	conf &= 0xFE;
 	NRF24WriteRegister(CONFIG_REG, conf);
     __delay_us(200);
+    NRF24FlushTX();
 }
 void NRF24PRXmode(void)
 {
@@ -162,6 +163,7 @@ void NRF24PRXmode(void)
 	conf |= 0x01;
 	NRF24WriteRegister(CONFIG_REG, conf);
     __delay_us(200);
+    NRF24FlushRX();
 }
 
 void NRF24FlushTX(void)

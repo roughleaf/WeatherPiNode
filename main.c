@@ -45,6 +45,7 @@ uint8_t rtcAlarm = 0;
 void rainCounterISR(void);
 void minuteTriggerISR(void);
 void tenMinuteTriggerISR(void);
+void nrf24ISR(void);
 // =================================================================
 // ================== General Function Prototypes ==================
 void TransmitSensorData(void);
@@ -56,6 +57,7 @@ long rainCount = 0;
 
 bool minuteTriggerFlag = false;     // Use flags to handle interrupts
 bool tenMinuteTriggerFlag = false;  // Use flags to handle interrupts
+bool nrfIrqTriggerFlag = false;
 
 bool DateTimeSet = false;
 
@@ -68,6 +70,7 @@ void main(void)
     INT0_SetInterruptHandler(rainCounterISR);
     INT1_SetInterruptHandler(minuteTriggerISR);
     INT2_SetInterruptHandler(tenMinuteTriggerISR);
+    IOCAF6_SetInterruptHandler(nrf24ISR);
     
     // Initialize attached devices and interrupts
     //LCD_Innitialize();   // LCD used for initial development and debugging.
@@ -92,101 +95,99 @@ void main(void)
     // Disable the Peripheral Interrupts
     //INTERRUPT_PeripheralInterruptDisable();
     
-    __delay_ms(1000);
-    RequestDateTimeUpdate();
-
+    PORTCbits.RC7 = !DateTimeSet;
+    
+    __delay_ms(2000);
+    RequestDateTimeUpdate();    
     while (1)       // Main While Loop
     {
+        if (nrfIrqTriggerFlag) // If interrupt was triggered on NRF24L01
+        {
+            nrfIrqTriggerFlag = false;            
+            unsigned char NrfStatus = NRF24ReadStatus();
+
+            if (NrfStatus & 0x40) // RX Received
+            {
+                char rxBuff[32] = {0};
+                unsigned int rxWidth = GetRXWidth();
+                NRF24ReadPayload(rxBuff, rxWidth);
+                RTCSetDateTime(rxBuff);
+                DateTimeSet = true;
+
+                NRF24WriteRegister(STATUS_REG, (NrfStatus | 0x40));
+                NRF24FlushTX();
+                NRF24FlushRX();
+
+                if (!DateTimeSet)
+                {
+                    NRF24PRXmode(); // Remove for release build
+                    __delay_us(200); // Remove for release build
+                    NRF24_CE = 1; // Remove for release build   
+                }
+                else
+                {
+                    NRF24PowerOff();
+                }
+            }
+            //==============================================================================
+            // Todo
+            // Parts of below needs to be implemented in this section
+            if (NrfStatus & 0x20) // TX sent
+            {
+                NRF24WriteRegister(STATUS_REG, (NrfStatus | 0x20));
+                NRF24FlushTX();
+                NRF24FlushRX();
+
+                if (!DateTimeSet)
+                {
+                    NRF24PRXmode(); // Remove for release build
+                    __delay_us(200); // Remove for release build
+                    NRF24_CE = 1; // Remove for release build   
+                }
+                else
+                {
+                    NRF24PowerOff();
+                }
+            }
+            //==================================================================================
+            // Todo
+            // Save data to transmit to so variables in stack.
+            // Calculate how much memory I will need in order to decide
+            // how many datasets to save before recorded data is lost.
+            // Then I need to transmit all the datasets once connection to 
+            // WeatherPi node is restored
+
+            if (NrfStatus & 0x10) // Resend
+            {
+                NRF24WriteRegister(STATUS_REG, (NrfStatus | 0x10));
+                NRF24FlushTX();
+                NRF24FlushRX();
+                if (!DateTimeSet)
+                {
+                    NRF24PRXmode();
+                    __delay_us(200);
+                    NRF24_CE = 1;
+                }
+                else
+                {
+                    NRF24PowerOff();
+                }
+            }
+
+            NRF24WriteRegister(0x07, (NrfStatus | 0x70)); // Clear all interrupts
+            PORTCbits.RC7 = !DateTimeSet;
+        }
+        
         if (minuteTriggerFlag)
         {        
             minuteTriggerFlag = false;
-            RTCClearAlarmFlag();          
-            
+            RTCClearAlarmFlag();  
             PORTCbits.RC7 = !DateTimeSet;
-            
-            //PORTCbits.RC7 = !PORTCbits.RC7; // Toggle LED, debug mode only
-
-            rtcAlarm = RTCReadAlarmFlag() & 0x0F;   // For future use
-            
-            if (!PORTAbits.RA6)  // If interrupt was triggered on NRF24L01
+            rtcAlarm = RTCReadAlarmFlag() & 0x0F;   // For future use   
+            if (!DateTimeSet)
             {
-                unsigned char NrfStatus = NRF24ReadStatus();
-
-                if (NrfStatus & 0x40) // RX Received
-                {
-                    char rxBuff[32] = {0};
-                    unsigned int rxWidth = GetRXWidth();
-                    NRF24ReadPayload(rxBuff, rxWidth);
-                    RTCSetDateTime(rxBuff);
-                    DateTimeSet = true;
-
-                    NRF24WriteRegister(STATUS_REG, (NrfStatus | 0x40));
-                    NRF24FlushTX();
-                    NRF24FlushRX();
-                    
-                    if (!DateTimeSet)
-                    {                        
-                        NRF24PRXmode(); // Remove for release build
-                        __delay_us(200); // Remove for release build
-                        NRF24_CE = 1; // Remove for release build   
-                    }
-                    else
-                    {
-                        NRF24PowerOff();
-                    }
-                }
-//==============================================================================
-                // Todo
-                // Parts of below needs to be implemented in this section
-                if (NrfStatus & 0x20) // TX sent
-                {
-                    NRF24WriteRegister(STATUS_REG, (NrfStatus | 0x20));
-                    NRF24FlushTX();
-                    NRF24FlushRX();
-                    
-                    if (!DateTimeSet)
-                    {                        
-                        NRF24PRXmode(); // Remove for release build
-                        __delay_us(200); // Remove for release build
-                        NRF24_CE = 1; // Remove for release build   
-                    }
-                    else
-                    {
-                        NRF24PowerOff();
-                    }
-                }
-//==================================================================================
-                // Todo
-                // Save data to transmit to so variables in stack.
-                // Calculate how much memory I will need in order to decide
-                // how many datasets to save before recorded data is lost.
-                // Then I need to transmit all the datasets once connection to 
-                // WeatherPi node is restored
-                
-                if (NrfStatus & 0x10) // Resend
-                {
-                    NRF24WriteRegister(STATUS_REG, (NrfStatus | 0x10));
-                    NRF24FlushTX();
-                    NRF24FlushRX();
-                    if (!DateTimeSet)
-                    {                        
-                        NRF24PRXmode(); // Remove for release build
-                        __delay_us(200); // Remove for release build
-                        NRF24_CE = 1; // Remove for release build   
-                    }
-                    else
-                    {
-                        NRF24PowerOff();
-                    }
-                }
-
-                NRF24WriteRegister(0x07, (NrfStatus | 0x70)); // Clear all interrupts
+                RequestDateTimeUpdate();
             }
-
-            //if (!DateTimeSet)
-            //{
-            //    RequestDateTimeUpdate();
-            //}
         }
         
         if(tenMinuteTriggerFlag)
@@ -196,10 +197,10 @@ void main(void)
             {
                 TransmitSensorData();
             }
-            else
-            {
-                RequestDateTimeUpdate();    // Move to minute interrupt when changed for deployment.
-            }
+            //else
+            //{
+            //    RequestDateTimeUpdate();    // Move to minute interrupt when changed for deployment.
+            //}
         }
     }
     SLEEP();
@@ -223,6 +224,11 @@ void minuteTriggerISR(void)
 void tenMinuteTriggerISR(void)
 {
     tenMinuteTriggerFlag = true;
+}
+
+void nrf24ISR(void)
+{
+    nrfIrqTriggerFlag = true;
 }
 
 void TransmitSensorData(void)
