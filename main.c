@@ -1,13 +1,8 @@
 // TODO
 // Change RTC interrupt to trigger every minute for deployment. It's set for every second for debugging
-// Save data that were unable to be sent to RAM to be sent later.
+// Save data that were unable to be sent to RAM to be sent later. Create Circular Buffer for this
+// Refactor to move functions to another folder and shorten the main function. This will improve readability
 
-// Issues
-// NRF24 module will be in standby mode for up to a minute before being placed into sleep mode.
-// Possible Fixes:
-// 1. Repurpose one of the external interrupts for the NRF24 Interrupt
-// 2. Enable port change interrupt on PARTA to use NRF24 Interrupt immediately
-// 3. Use a Timer module to poll the NRF24 Interrupt pin
 
 #include "mcc_generated_files/mcc.h"
 #include "mcc_generated_files/drivers/i2c_simple_master.h"
@@ -97,7 +92,7 @@ void main(void)
     
     PORTCbits.RC7 = !DateTimeSet;
     
-    __delay_ms(2000);
+    __delay_ms(2000);      // Needed for NRF24L01+ to be stable
     RequestDateTimeUpdate();    
     while (1)       // Main While Loop
     {
@@ -115,7 +110,6 @@ void main(void)
                 DateTimeSet = true;
 
                 NRF24WriteRegister(STATUS_REG, (NrfStatus | 0x40));
-                NRF24FlushTX();
                 NRF24FlushRX();
 
                 if (!DateTimeSet)
@@ -136,7 +130,6 @@ void main(void)
             {
                 NRF24WriteRegister(STATUS_REG, (NrfStatus | 0x20));
                 NRF24FlushTX();
-                NRF24FlushRX();
 
                 if (!DateTimeSet)
                 {
@@ -161,7 +154,6 @@ void main(void)
             {
                 NRF24WriteRegister(STATUS_REG, (NrfStatus | 0x10));
                 NRF24FlushTX();
-                NRF24FlushRX();
                 if (!DateTimeSet)
                 {
                     NRF24PRXmode();
@@ -196,11 +188,8 @@ void main(void)
             if(DateTimeSet)
             {
                 TransmitSensorData();
+                rainCount = 0;
             }
-            //else
-            //{
-            //    RequestDateTimeUpdate();    // Move to minute interrupt when changed for deployment.
-            //}
         }
     }
     SLEEP();
@@ -297,10 +286,6 @@ void TransmitSensorData(void)
     txBuff[29] = numberToByte.bytes[2];
     txBuff[30] = numberToByte.bytes[3];
     
-    //txBuff[27] = (char)rainCount;
-    
-    //intToByte.intNumber = rainCount;
-    
     NRF24TransmitToChannel(txBuff, 31);
 }
 
@@ -310,7 +295,7 @@ void RequestDateTimeUpdate(void)
 
     txBuff[0] = 0;          // Indicate that we are requesting DateTime Data for the RTC
     txBuff[1] = NRFChannel; // ID for this sensor node
- 
+    
     NRF24TransmitToChannel(txBuff, 2);
 }
 

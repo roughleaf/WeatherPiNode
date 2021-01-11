@@ -27,12 +27,13 @@ void NRF24Initialize(void)
 
     Activate(); // Enable some special features
 
-    NRF24WriteRegister(DYNPD_REG, 0x3F);
+    NRF24WriteRegister(DYNPD_REG, 0x01);
     NRF24WriteRegister(FEATURE_REG, 0x04);
     
-    NRF24PRXmode();
     NRF24FlushRX();
     NRF24FlushTX();
+    
+    NRF24PRXmode();
 
     NRF24_CE = 1;       // Enable Receiver
 }
@@ -124,7 +125,6 @@ int NRF24TransmitToChannel(const char* txBuff, unsigned int length)
 	}
 
 	NRF24PTXmode();					// Set PTX mode
-	NRF24FlushTX();
     
     NRF24_CSN = 0;
     SPI2_Open(0);
@@ -155,7 +155,6 @@ void NRF24PTXmode(void)
 	conf &= 0xFE;
 	NRF24WriteRegister(CONFIG_REG, conf);
     __delay_us(200);
-    NRF24FlushTX();
 }
 void NRF24PRXmode(void)
 {
@@ -163,19 +162,24 @@ void NRF24PRXmode(void)
 	conf |= 0x01;
 	NRF24WriteRegister(CONFIG_REG, conf);
     __delay_us(200);
-    NRF24FlushRX();
 }
 
 void NRF24FlushTX(void)
 {
-    SPI2_WriteByte(0xE1);
-    __delay_us(200);
+    NRF24_CSN = 0;
+    SPI2_Open(0);
+    SPI2_ExchangeByte(0xE1);
+    NRF24_CSN = 1;
+    SPI2_Close();
 }
 
 void NRF24FlushRX(void)
 {
-    SPI2_WriteByte(0xE2);
-    __delay_us(200);
+    NRF24_CSN = 0;
+    SPI2_Open(0);
+    SPI2_ExchangeByte(0xE2);
+    NRF24_CSN = 1;
+    SPI2_Close();
 }
 
 void Activate(void)
