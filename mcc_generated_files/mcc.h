@@ -56,6 +56,7 @@
 #include "spi2.h"
 #include "i2c1_master.h"
 #include "ext_int.h"
+#include "tmr2.h"
 #include "drivers/spi_master.h"
 #include "drivers/i2c_simple_master.h"
 

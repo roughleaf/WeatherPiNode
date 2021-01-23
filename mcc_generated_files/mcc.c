@@ -55,6 +55,7 @@ void SYSTEM_Initialize(void)
     SPI2_Initialize();
     PIN_MANAGER_Initialize();
     OSCILLATOR_Initialize();
+    TMR2_Initialize();
     EXT_INT_Initialize();
 }
 
