@@ -74,7 +74,7 @@ void main(void)
     RTC_Innitialize();
     NRF24Initialize();
     
-    RTCEnableMinuteInterrupt();   // Need to change this to every minute
+    RTCEnableMinuteInterrupt(NRFChannel);   // Need to change this to every minute
 
     INTERRUPT_GlobalInterruptEnable();
     INTERRUPT_PeripheralInterruptEnable();

@@ -16,7 +16,7 @@ void RTCSetHours(uint8_t tenHours, uint8_t hours);
 void RTCSetDay(uint8_t tenDay, uint8_t day);
 void RTCSetMonth(uint8_t tenMonth, uint8_t month);
 void RTCSetYear(uint8_t tenYear, uint8_t year);
-void RTCEnableMinuteInterrupt(void);
+void RTCEnableMinuteInterrupt(uint8_t NodeID);
 void RTCClearAlarmFlag(void);
 uint8_t RTCReadAlarmFlag(void);
 void RTCSetDateTime(char * dateTime);
