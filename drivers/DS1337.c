@@ -97,8 +97,8 @@ uint8_t RTCGetYear(void)
 // If NodeID > 9 then it need to be converted to BCD
 void RTCEnableMinuteInterrupt(uint8_t NodeID)
 {
-    i2c_write1ByteRegister(RTC_ADDR, 0x07, 0b10000000); // When enables trigger once per second
-    //i2c_write1ByteRegister(RTC_ADDR, 0x07, NodeID);     // When enabled trigger once per minute, NodeID sets the second offset
+    //i2c_write1ByteRegister(RTC_ADDR, 0x07, 0b10000000); // When enables trigger once per second
+    i2c_write1ByteRegister(RTC_ADDR, 0x07, NodeID);     // When enabled trigger once per minute, NodeID sets the second offset
     i2c_write1ByteRegister(RTC_ADDR, 0x08, 0b10000000);
     i2c_write1ByteRegister(RTC_ADDR, 0x09, 0b10000000);
     i2c_write1ByteRegister(RTC_ADDR, 0x0A, 0b10000000);

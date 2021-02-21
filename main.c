@@ -41,6 +41,7 @@ void rainCounterISR(void);
 void minuteTriggerISR(void);
 void tenMinuteTriggerISR(void);
 void nrf24ISR(void);
+void timer2ISR(void);
 // =================================================================
 // ================== General Function Prototypes ==================
 void TransmitSensorData(void);
@@ -55,6 +56,7 @@ bool tenMinuteTriggerFlag = false;  // Use flags to handle interrupts
 bool nrfIrqTriggerFlag = false;
 
 bool DateTimeSet = false;
+bool tenMinuteIsSynchronized = false;
 
 void main(void)
 {
@@ -66,6 +68,7 @@ void main(void)
     INT1_SetInterruptHandler(minuteTriggerISR);
     INT2_SetInterruptHandler(tenMinuteTriggerISR);
     IOCAF6_SetInterruptHandler(nrf24ISR);
+    TMR2_SetInterruptHandler(timer2ISR);
     
     // Initialize attached devices and interrupts
     //LCD_Innitialize();   // LCD used for initial development and debugging.
@@ -76,20 +79,12 @@ void main(void)
     
     RTCEnableMinuteInterrupt(NRFChannel);   // Need to change this to every minute
 
+    TMR2_Stop();        // Timer 2 is started by default.
+    rainCount = 0;
+    
     INTERRUPT_GlobalInterruptEnable();
     INTERRUPT_PeripheralInterruptEnable();
-    // Enable the Global Interrupts
-    //INTERRUPT_GlobalInterruptEnable();
 
-    // Disable the Global Interrupts
-    //INTERRUPT_GlobalInterruptDisable();
-
-    // Enable the Peripheral Interrupts
-    //INTERRUPT_PeripheralInterruptEnable();
-
-    // Disable the Peripheral Interrupts
-    //INTERRUPT_PeripheralInterruptDisable();
-    
     PORTCbits.RC7 = !DateTimeSet;
     
     __delay_ms(2000);      // Needed for NRF24L01+ to be stable
@@ -180,6 +175,19 @@ void main(void)
             {
                 RequestDateTimeUpdate();
             }
+            if (!tenMinuteIsSynchronized)
+            {
+                UpdateRtcVariables();
+                if (min == 0)
+                {
+                    // Reset the decade counter
+                    PORTCbits.RC6 = 1;
+                    __delay_ms(1);
+                    PORTCbits.RC6 = 0;
+                    tenMinuteIsSynchronized = true;
+                    tenMinuteTriggerFlag = true;
+                }
+            }
         }
         
         if(tenMinuteTriggerFlag)
@@ -197,12 +205,14 @@ void main(void)
 
 void rainCounterISR(void)
 {
-   //INTERRUPT_GlobalInterruptDisable();
-   INTERRUPT_PeripheralInterruptDisable();
+    TMR2_WriteTimer(0);
+    TMR2_Start();
+}
+
+void timer2ISR(void)
+{
     rainCount++;
-    __delay_ms(10); // software debounce
-    INTERRUPT_PeripheralInterruptEnable();
-    //INTERRUPT_GlobalInterruptEnable();
+    TMR2_Stop();
 }
 
 void minuteTriggerISR(void)
