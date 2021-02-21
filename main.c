@@ -80,7 +80,6 @@ void main(void)
     RTCEnableMinuteInterrupt(NRFChannel);   // Need to change this to every minute
 
     TMR2_Stop();        // Timer 2 is started by default.
-    rainCount = 0;
     
     INTERRUPT_GlobalInterruptEnable();
     INTERRUPT_PeripheralInterruptEnable();
@@ -89,6 +88,7 @@ void main(void)
     
     __delay_ms(2000);      // Needed for NRF24L01+ to be stable
     RequestDateTimeUpdate();    
+    rainCount = 0;
     while (1)       // Main While Loop
     {
         if (nrfIrqTriggerFlag) // If interrupt was triggered on NRF24L01
