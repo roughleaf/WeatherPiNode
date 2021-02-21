@@ -78,8 +78,6 @@ void main(void)
     NRF24Initialize();
     
     RTCEnableMinuteInterrupt(NRFChannel);   // Need to change this to every minute
-
-    TMR2_Stop();        // Timer 2 is started by default.
     
     INTERRUPT_GlobalInterruptEnable();
     INTERRUPT_PeripheralInterruptEnable();
@@ -88,6 +86,7 @@ void main(void)
     
     __delay_ms(2000);      // Needed for NRF24L01+ to be stable
     RequestDateTimeUpdate();    
+    TMR2_Stop();
     rainCount = 0;
     while (1)       // Main While Loop
     {
@@ -182,7 +181,7 @@ void main(void)
                 {
                     // Reset the decade counter
                     PORTCbits.RC6 = 1;
-                    __delay_ms(1);
+                    __delay_ms(10);
                     PORTCbits.RC6 = 0;
                     tenMinuteIsSynchronized = true;
                     tenMinuteTriggerFlag = true;
