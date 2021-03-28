@@ -19,7 +19,7 @@ void NRF24Initialize(void)
     NRF24WriteRegister(SETUP_AW_REG, 0x03);
     NRF24WriteRegister(SETUP_RETR_REG, 0xF3);
     NRF24WriteRegister(RF_CH_REG, 0x50); // Set to 2480Mhz, outer edge of chanel 13 but still within legal limits
-    NRF24WriteRegister(RF_SETUP_REG, 0x0F); // Set gain to minimum for testing
+    NRF24WriteRegister(RF_SETUP_REG, 0x0F); // Maximum transmit power @ 0dBm
     NRF24WriteRegister(STATUS_REG, 0x70); // Clear all Interrupt Flags
 
     NRF24WriteRegisterBytes(RX_ADDR_P0_REG, NRFAddr, 5); // Setup Receive Datapipe Address
